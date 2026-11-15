@@ -1,0 +1,44 @@
+import { boot, pageHead, $, h, icon, fmtDate, fmtNum, pct, loadInto, confirmBox, toast, toastError, refreshIcons, skeleton, url, drawChart } from '../ui.js';
+import { models } from '../../../services/api.js';
+import { cropName } from '../crops.js';
+
+const ST = { active: ['Aktif', 'green'], candidate: ['Kandidat (menunggu persetujuan)', 'amber'], archived: ['Diarsipkan', ''], rejected: ['Ditolak', 'red'] };
+function confusion(cm) {   // heatmap HTML murni dari matriks nyata data uji
+  const { labels, matrix } = cm; const max = Math.max(...matrix.flat(), 1);
+  return `<div class="table-wrap"><table class="cm" aria-label="Confusion matrix"><thead><tr><th></th>${labels.map((l) => `<th class="rot"><span>${h(l)}</span></th>`).join('')}</tr></thead><tbody>${matrix.map((r, i) => `<tr><th style="text-align:right;padding-right:4px">${h(labels[i])}</th>${r.map((v, j) => `<td title="Aktual ${h(labels[i])} → prediksi ${h(labels[j])}: ${v}" style="background:${v ? `rgba(21,128,61,${(0.15 + 0.85 * v / max).toFixed(2)})` : (i === j ? '#f3f4f6' : 'transparent')};color:${v / max > .5 ? '#fff' : '#111'}">${v || ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="small muted">Baris = kelas aktual, kolom = prediksi, pada data uji.</p>`;
+}
+boot({ role: 'admin', nav: 'models', title: 'Model ML', crumbs: [['Data & Model']] }, async (main) => {
+  main.innerHTML = pageHead('Informasi model Machine Learning', 'Semua angka berasal dari hasil training dan evaluasi nyata.', `<a class="btn secondary" href="${url('admin/datasets.html')}">${icon('database')} Dataset</a>`) + '<div id="job"></div><div id="body"></div>';
+  const watch = new URLSearchParams(location.search).get('watch');
+  if (watch) pollJob(watch);
+  async function pollJob(v) {
+    const box = $('#job'); box.innerHTML = `<div class="alert info"><span class="typing"><span></span><span></span><span></span></span><div>Training <b>${h(v)}</b> sedang berjalan di layanan Python…</div></div>`;
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try { const j = await models.job(v);
+        if (j.status === 'done') { box.innerHTML = `<div class="alert ok">${icon('check')}<div>Training <b>${h(v)}</b> selesai. Kandidat model ada di Riwayat versi; periksa metriknya lalu setujui atau tolak.</div></div>`; history.replaceState(null, '', location.pathname); refreshIcons(); return load(); }
+        if (j.status === 'failed') { box.innerHTML = `<div class="alert err">Training ${h(v)} gagal: ${h(j.message || j.error || 'kesalahan tidak diketahui')}</div>`; return; }
+      } catch (e) { box.innerHTML = `<div class="alert err">Tidak dapat memantau training: ${h(e.message)}</div>`; return; }
+    }
+  }
+  const load = () => loadInto($('#body'), async (el) => {
+    const o = await models.overview(); const a = o.active; const ev = o.evaluation;
+    const svc = o.service.available ? (o.in_sync ? '<span class="badge green">Layanan inferensi terhubung · sinkron</span>' : '<span class="badge amber">Layanan terhubung tetapi versi tidak sinkron dengan database</span>') : '<span class="badge red">Layanan inferensi TIDAK tersedia — prediksi akan ditolak</span>';
+    el.innerHTML = `<div class="mb">${svc}</div>` + (a ? `<div class="stats"><div class="card stat"><span class="ico">${icon('brain-circuit')}</span><div><div class="v" style="font-size:1.1rem">${h(a.algorithm)}</div><div class="l">Algoritma · versi ${h(a.version)}</div></div></div>
+      <div class="card stat blue"><span class="ico">${icon('target')}</span><div><div class="v">${pct(a.accuracy)}</div><div class="l">Accuracy (uji)</div></div></div>
+      <div class="card stat"><span class="ico">${icon('crosshair')}</span><div><div class="v">${pct(a.precision)}</div><div class="l">Precision (macro)</div></div></div>
+      <div class="card stat amber"><span class="ico">${icon('repeat')}</span><div><div class="v">${pct(a.recall)}</div><div class="l">Recall (macro)</div></div></div>
+      <div class="card stat violet"><span class="ico">${icon('scale')}</span><div><div class="v">${pct(a.f1_score)}</div><div class="l">F1-score (macro)</div></div></div></div>
+      <div class="card mb"><h2>Model aktif</h2><dl class="kv"><dt>Status</dt><dd><span class="badge green">Aktif</span></dd><dt>Tanggal training</dt><dd>${fmtDate(a.training_date)}</dd><dt>Dataset</dt><dd>${h(a.datasets?.dataset_name || '–')} ${a.datasets ? `(versi ${h(a.datasets.version)})` : ''}</dd><dt>Data latih / uji</dt><dd>${fmtNum(a.n_train, 0)} / ${fmtNum(a.n_test, 0)}</dd><dt>Jumlah kelas</dt><dd>${a.total_classes}</dd><dt>Probabilitas</dt><dd>${a.supports_proba ? 'Didukung (predict_proba)' : 'Tidak didukung'}</dd>${o.metadata?.selection ? `<dt>Aturan pemilihan</dt><dd class="small">${h(typeof o.metadata.selection === 'string' ? o.metadata.selection : JSON.stringify(o.metadata.selection))}</dd>` : ''}</dl></div>` : '<div class="alert warn">Belum ada model aktif. Pengguna belum dapat melakukan pemeriksaan.</div>')
+    + (ev ? `<div class="grid cols-2"><div class="card"><h2>Perbandingan algoritma</h2><div class="table-wrap"><table><thead><tr><th>Algoritma</th><th class="num">CV5</th><th class="num">Akurasi uji</th><th class="num">F1 macro</th></tr></thead><tbody>${ev.comparison.map((c) => `<tr ${c.algorithm === ev.selected ? 'style="font-weight:700;background:var(--g50)"' : ''}><td>${h(c.algorithm)}${c.algorithm === ev.selected ? ' ✔' : ''}</td><td class="num">${pct(c.cv_accuracy_mean)}</td><td class="num">${pct(c.test_accuracy)}</td><td class="num">${pct(c.test_f1_macro)}</td></tr>`).join('')}</tbody></table></div></div>
+      <div class="card"><h2>Akurasi uji per algoritma</h2><div class="chart-box sm" id="cc"></div></div></div>
+      <div class="card mt"><h2>Confusion matrix</h2>${confusion(ev.confusion_matrix)}</div>
+      <div class="card mt"><h2>Classification report</h2><div class="table-wrap"><table><thead><tr><th>Kelas</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th><th class="num">Support</th></tr></thead><tbody>${Object.entries(ev.classification_report).filter(([k]) => !['accuracy'].includes(k)).map(([k, r]) => `<tr><td>${h(cropName(k) === k ? k : `${cropName(k)} (${k})`)}</td><td class="num">${r.precision.toFixed(3)}</td><td class="num">${r.recall.toFixed(3)}</td><td class="num">${r['f1-score'].toFixed(3)}</td><td class="num">${r.support}</td></tr>`).join('')}</tbody></table></div></div>` : (a ? '<div class="alert warn">Detail evaluasi tidak dapat dimuat karena layanan inferensi tidak tersedia.</div>' : ''))
+    + `<div class="card mt flush"><div style="padding:1.1rem 1.1rem 0"><h2>Riwayat versi model</h2></div><div class="table-wrap"><table class="stack-table"><thead><tr><th>Versi</th><th>Algoritma</th><th class="num">Akurasi</th><th class="num">F1</th><th>Dataset</th><th>Status</th><th>Dilatih</th><th>Aksi</th></tr></thead><tbody>${o.versions.map((v) => `<tr><td data-l="Versi"><code>${h(v.version)}</code></td><td data-l="Algoritma">${h(v.algorithm)}</td><td class="num" data-l="Akurasi">${pct(v.accuracy)}</td><td class="num" data-l="F1">${pct(v.f1_score)}</td><td data-l="Dataset">${h(v.datasets?.version || '–')}</td><td data-l="Status"><span class="badge ${(ST[v.status] || [])[1]}">${h((ST[v.status] || [v.status])[0])}</span></td><td data-l="Dilatih" class="nowrap">${fmtDate(v.training_date, false)}</td><td data-l="Aksi" class="nowrap">${v.status === 'candidate' ? `<button class="btn sm" data-ok="${h(v.id)}">Setujui & aktifkan</button> <button class="btn sm ghost" data-no="${h(v.id)}">Tolak</button>` : v.status === 'archived' ? `<button class="btn sm secondary" data-ok="${h(v.id)}">Aktifkan kembali</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>`;
+    if (ev) drawChart($('#cc', el), { type: 'bar', horizontal: true, labels: ev.comparison.map((c) => c.algorithm), datasets: [{ label: 'Akurasi uji', data: ev.comparison.map((c) => +(c.test_accuracy * 100).toFixed(2)) }] });
+    el.querySelectorAll('[data-ok]').forEach((b) => b.addEventListener('click', async () => { const v = o.versions.find((x) => x.id === b.dataset.ok); if (!(await confirmBox({ title: `Aktifkan model ${v.version}?`, text: `${v.algorithm} (akurasi uji ${pct(v.accuracy)}) akan dipakai untuk semua prediksi berikutnya. Model aktif saat ini diarsipkan.` }))) return; try { await models.activate(v.id); toast('Model diaktifkan.'); load(); } catch (e) { toastError(e); } }));
+    el.querySelectorAll('[data-no]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox({ title: 'Tolak kandidat ini?', text: 'Versi yang ditolak tidak bisa diaktifkan.', confirm: 'Tolak', danger: true }))) return; try { await models.reject(b.dataset.no); toast('Kandidat ditolak.'); load(); } catch (e) { toastError(e); } }));
+    refreshIcons();
+  }, { skel: skeleton(5) });
+  load();
+});
