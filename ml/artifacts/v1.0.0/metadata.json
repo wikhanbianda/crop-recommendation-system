@@ -1,0 +1,149 @@
+{
+  "version": "v1.0.0",
+  "algorithm": "Naive Bayes",
+  "trained_at": "2026-11-11T19:30:15+00:00",
+  "dataset": {
+    "name": "Crop_recommendation.csv",
+    "sha256": "54a5a6e5408668e668667efc50de2fc867c1b875e0431b4f54dd331b0a109a4e",
+    "rows_raw": 2200,
+    "missing_per_column": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "temperature": 0,
+      "humidity": 0,
+      "ph": 0,
+      "rainfall": 0,
+      "label": 0
+    },
+    "rows_after_dropna": 2200,
+    "duplicates_removed": 0,
+    "rows_clean": 2200,
+    "n_features": 7,
+    "n_classes": 22
+  },
+  "features": [
+    "N",
+    "P",
+    "K",
+    "temperature",
+    "humidity",
+    "ph",
+    "rainfall"
+  ],
+  "classes": [
+    "apple",
+    "banana",
+    "blackgram",
+    "chickpea",
+    "coconut",
+    "coffee",
+    "cotton",
+    "grapes",
+    "jute",
+    "kidneybeans",
+    "lentil",
+    "maize",
+    "mango",
+    "mothbeans",
+    "mungbean",
+    "muskmelon",
+    "orange",
+    "papaya",
+    "pigeonpeas",
+    "pomegranate",
+    "rice",
+    "watermelon"
+  ],
+  "n_train": 1760,
+  "n_test": 440,
+  "split": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "stratify": true
+  },
+  "selection": "5-fold stratified CV akurasi pada data latih (tie-break: F1 makro CV)",
+  "metrics": {
+    "accuracy": 0.9954545454545455,
+    "precision_macro": 0.9958677685950413,
+    "recall_macro": 0.9954545454545454,
+    "f1_macro": 0.9954431533378901,
+    "precision_weighted": 0.9958677685950413,
+    "recall_weighted": 0.9954545454545455,
+    "f1_weighted": 0.9954431533378901
+  },
+  "supports_predict_proba": true,
+  "feature_domain_bounds": {
+    "N": {
+      "min": 0,
+      "max": 200,
+      "unit": "mg/kg"
+    },
+    "P": {
+      "min": 0,
+      "max": 200,
+      "unit": "mg/kg"
+    },
+    "K": {
+      "min": 0,
+      "max": 300,
+      "unit": "mg/kg"
+    },
+    "temperature": {
+      "min": 0,
+      "max": 50,
+      "unit": "°C"
+    },
+    "humidity": {
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    "ph": {
+      "min": 0,
+      "max": 14,
+      "unit": ""
+    },
+    "rainfall": {
+      "min": 0,
+      "max": 500,
+      "unit": "mm"
+    }
+  },
+  "feature_training_range": {
+    "N": {
+      "min": 0.0,
+      "max": 140.0
+    },
+    "P": {
+      "min": 5.0,
+      "max": 145.0
+    },
+    "K": {
+      "min": 5.0,
+      "max": 205.0
+    },
+    "temperature": {
+      "min": 8.825674745,
+      "max": 43.67549305
+    },
+    "humidity": {
+      "min": 14.25803981,
+      "max": 99.98187601
+    },
+    "ph": {
+      "min": 3.504752314,
+      "max": 9.93509073
+    },
+    "rainfall": {
+      "min": 20.21126747,
+      "max": 298.5601175
+    }
+  },
+  "library_versions": {
+    "sklearn": "1.9.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "joblib": "1.6.0"
+  }
+}
