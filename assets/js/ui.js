@@ -79,7 +79,7 @@ export function drawChart(host, { type = 'bar', labels, datasets, horizontal = f
     const cv = document.createElement('canvas'); cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Grafik ' + (datasets[0].label || '')); host.append(cv);
     const pie = type === 'doughnut' || type === 'pie';
     const ds = datasets.map((d, i) => ({ borderRadius: type === 'bar' ? 5 : 0, tension: .3, fill: type === 'line' ? 'start' : false, backgroundColor: pie ? labels.map((_, j) => COLORS[j % COLORS.length]) : (type === 'line' ? 'rgba(34,197,94,.15)' : COLORS[i % COLORS.length]), borderColor: pie ? '#fff' : COLORS[i % COLORS.length], ...d }));
-    charts.set(host, new window.Chart(cv, { type, data: { labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, indexAxis: horizontal ? 'y' : 'x', plugins: { legend: { display: legend || pie } }, scales: pie ? {} : { x: { stacked, grid: { display: false } }, y: { stacked, beginAtZero: true, ticks: { precision: 0 }, title: { display: !!yTitle, text: yTitle } } } } }));
+    charts.set(host, new window.Chart(cv, { type, data: { labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, indexAxis: horizontal ? 'y' : 'x', plugins: { legend: { display: legend || pie } }, scales: pie ? {} : { x: { stacked, grid: { display: false }, ...(horizontal ? { beginAtZero: true, ticks: { precision: 0 } } : {}) }, y: { stacked, beginAtZero: true, ticks: { precision: 0 }, title: { display: !!yTitle, text: yTitle } } } } }));
     return;
   }
   const d = datasets[0].data; const max = Math.max(...d, 1);   // fallback tanpa Chart.js: batang HTML
