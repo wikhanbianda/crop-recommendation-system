@@ -14,7 +14,7 @@ boot({ role: 'admin', nav: 'reports', title: 'Laporan', crumbs: [['Administrasi'
     const a = args(); if (a.p_from && a.p_to && a.p_from > a.p_to) throw new Error('Tanggal awal tidak boleh setelah tanggal akhir.');
     const r = cur = await rpc('admin_report_summary', a);
     const A = r.avg || {};
-    el.innerHTML = `<div class="print-only"><h2>Laporan Crop Recommendation System</h2><p>Dicetak ${fmtDate(new Date())}. Filter: ${h(a.p_from || '…')} s/d ${h(a.p_to || '…')}</p></div>
+    el.innerHTML = `<div class="print-only"><h2>Laporan Crop Recommendation System</h2><p>Dicetak ${fmtDate(new Date())}. Filter: ${a.p_from || a.p_to ? `${h(a.p_from || 'awal')} s/d ${h(a.p_to || 'sekarang')}` : 'semua tanggal'}</p></div>
     <div class="stats"><div class="card stat"><span class="ico">${icon('clipboard-list')}</span><div><div class="v">${fmtNum(r.total, 0)}</div><div class="l">Pemeriksaan</div></div></div><div class="card stat blue"><span class="ico">${icon('users')}</span><div><div class="v">${fmtNum(r.users, 0)}</div><div class="l">Pengguna aktif</div></div></div><div class="card stat amber"><span class="ico">${icon('sprout')}</span><div><div class="v">${r.by_crop.length}</div><div class="l">Jenis tanaman direkomendasikan</div></div></div></div>
     ${r.total ? `<div class="grid cols-2"><div class="card"><h2>Rekomendasi tanaman</h2><div class="chart-box" id="g1"></div></div><div class="card"><h2>Pemeriksaan per hari</h2><div class="chart-box" id="g2"></div></div></div>
     <div class="grid cols-2 mt"><div class="card"><h2>Rata-rata parameter masukan</h2><dl class="kv"><dt>Nitrogen (N)</dt><dd>${A.N}</dd><dt>Fosfor (P)</dt><dd>${A.P}</dd><dt>Kalium (K)</dt><dd>${A.K}</dd><dt>Suhu</dt><dd>${A.temperature} °C</dd><dt>Kelembapan</dt><dd>${A.humidity} %</dd><dt>pH</dt><dd>${A.ph}</dd><dt>Curah hujan</dt><dd>${A.rainfall} mm</dd></dl></div>
@@ -27,6 +27,6 @@ boot({ role: 'admin', nav: 'reports', title: 'Laporan', crumbs: [['Administrasi'
   $('#go').addEventListener('click', load);
   $('#pdf').addEventListener('click', () => { if (!cur) return toast('Muat laporan terlebih dahulu.', 'warn'); printPage(); });
   $('#csv').addEventListener('click', () => { if (!cur || !cur.total) return toast('Tidak ada data untuk diekspor.', 'warn'); const a = args();
-    downloadCsv('laporan.csv', ['Bagian', 'Nama', 'Email', 'Jumlah', 'Keterangan'], [['Filter', `${a.p_from || ''} s/d ${a.p_to || ''}`, '', cur.total, `${cur.users} pengguna`], ...cur.by_crop.map((c) => ['Rekomendasi', cropName(c.crop), '', c.count, '']), ...cur.by_day.map((d) => ['Per hari', d.date, '', d.count, '']), ...cur.by_user.map((u) => ['Pengguna', u.name || '', u.email, u.count, fmtDate(u.last)])]); toast('CSV diekspor.'); });
+    downloadCsv('laporan.csv', ['Bagian', 'Nama', 'Email', 'Jumlah', 'Keterangan'], [['Filter', (a.p_from || a.p_to ? `${a.p_from || 'awal'} s/d ${a.p_to || 'sekarang'}` : 'semua tanggal'), '', cur.total, `${cur.users} pengguna`], ...cur.by_crop.map((c) => ['Rekomendasi', cropName(c.crop), '', c.count, '']), ...cur.by_day.map((d) => ['Per hari', d.date, '', d.count, '']), ...cur.by_user.map((u) => ['Pengguna', u.name || '', u.email, u.count, fmtDate(u.last)])]); toast('CSV diekspor.'); });
   load();
 });
