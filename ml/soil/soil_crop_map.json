@@ -1,0 +1,13 @@
+{
+  "_catatan": "PEMETAAN UMUM jenis tanah -> tanaman, berdasarkan literatur agronomi populer. Ini BUKAN keluaran model Machine Learning dan BUKAN hasil dataset. WAJIB divalidasi dosen/penyuluh pertanian sebelum dipakai sebagai kebenaran. Nilai 1.0 = sangat cocok, 0.6 = cocok, 0.3 = kurang. Tanaman yang tidak tercantum dianggap 0. Kunci jenis tanah harus sama persis (huruf kecil) dengan nama folder kelas pada dataset gambar.",
+  "alluvial":  {"rice": 1.0, "jute": 1.0, "maize": 0.6, "banana": 0.6, "lentil": 0.6, "chickpea": 0.6, "mango": 0.6, "papaya": 0.6, "watermelon": 0.6, "muskmelon": 0.6, "cotton": 0.3},
+  "black":     {"cotton": 1.0, "chickpea": 1.0, "pigeonpeas": 0.6, "maize": 0.6, "lentil": 0.6, "orange": 0.6, "grapes": 0.6, "watermelon": 0.3, "rice": 0.3},
+  "red":       {"pigeonpeas": 1.0, "mothbeans": 1.0, "mungbean": 0.6, "blackgram": 0.6, "kidneybeans": 0.6, "maize": 0.6, "mango": 0.6, "pomegranate": 0.6, "cotton": 0.3, "orange": 0.3},
+  "laterite":  {"coffee": 1.0, "coconut": 1.0, "mango": 0.6, "pigeonpeas": 0.3, "banana": 0.3, "papaya": 0.3},
+  "yellow":    {"mungbean": 0.6, "blackgram": 0.6, "pomegranate": 0.6, "mothbeans": 0.6, "pigeonpeas": 0.6, "maize": 0.3, "mango": 0.3, "orange": 0.3},
+  "arid":      {"mothbeans": 1.0, "watermelon": 1.0, "muskmelon": 1.0, "pomegranate": 0.6, "mungbean": 0.6, "chickpea": 0.3},
+  "mountain":  {"apple": 1.0, "coffee": 0.6, "kidneybeans": 0.6, "grapes": 0.3, "orange": 0.3, "lentil": 0.3},
+  "clay":      {"rice": 1.0, "jute": 0.6, "cotton": 0.6, "lentil": 0.3},
+  "sandy":     {"watermelon": 1.0, "muskmelon": 1.0, "mothbeans": 0.6, "mungbean": 0.6, "pomegranate": 0.3, "coconut": 0.3},
+  "loam":      {"maize": 1.0, "banana": 0.6, "papaya": 0.6, "mango": 0.6, "lentil": 0.6, "grapes": 0.6, "chickpea": 0.3}
+}

@@ -1,0 +1,33 @@
+// Uji UI fitur foto tanah (Playwright). Model gambar dilatih dari data SINTETIS hanya untuk menguji alur.
+import { createRequire } from 'node:module';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+const dir = mkdtempSync(join(tmpdir(), 'soilui-')); process.env.SOIL_ARTIFACTS_DIR = join(dir, 'art'); process.env.SETTINGS_CACHE_MS = '0';
+const { startEnv, login } = await import('../support/harness.mjs');
+const { createServer } = await import('../../scripts/dev-server.mjs');
+const { chromium } = createRequire('/usr/local/lib/node_modules/')('playwright');
+const env = await startEnv(); const srv = createServer(); await new Promise((r) => srv.listen(0, r));
+const base = `http://127.0.0.1:${srv.address().port}`; const browser = await chromium.launch(); let fails = 0;
+const ok = (c, m) => { console.log(c ? 'PASS' : 'FAIL', m); if (!c) fails++; };
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }); await ctx.route(/cdn\.jsdelivr\.net/, (r) => r.abort());
+const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.setDefaultTimeout(9000);
+await p.goto(base + '/login.html'); await p.fill('#f-email', 'ani@test.id'); await p.fill('#f-password', 'PasswordBaru77'.length ? (await import('../support/harness.mjs')).PW : ''); await p.click('button[type=submit]'); await p.waitForURL(/user\/dashboard/);
+ok(await p.locator('nav.nav a', { hasText: 'Rekomendasi dari foto' }).count() === 1, 'menu "Rekomendasi dari foto" ada di sidebar user');
+await p.goto(base + '/user/soil.html'); await p.waitForSelector('#state .alert');
+ok((await p.locator('main').innerText()).includes('belum dilatih') && await p.locator('#f').isHidden(), 'model belum dilatih -> pesan jelas, form tersembunyi');
+const s = spawnSync('python3', ['-I', join(import.meta.dirname, '../support/make_soil_fixture.py'), dir]); ok(s.status === 0, 'fixture sintetis dilatih');
+await p.reload(); await p.waitForSelector('#f:not([hidden])');
+await p.setInputFiles('#img', { name: 'tanah.jpg', mimeType: 'image/jpeg', buffer: readFileSync(join(dir, 'black.jpg')) });
+await p.waitForSelector('#pv:not([hidden])'); ok(await p.locator('button[type=submit]').isEnabled(), 'pratinjau tampil, tombol aktif');
+await p.click('button[type=submit]'); await p.waitForSelector('#res .card');
+const t = await p.locator('#res').innerText(); ok(t.includes('Tanah hitam') && t.includes('Kapas'), 'hasil: jenis tanah + tanaman tampil');
+ok(t.includes('pemetaan umum'), 'catatan batasan (pemetaan umum, bukan model NPK) tampil');
+await p.setInputFiles('#img', { name: 'x.txt', mimeType: 'text/plain', buffer: Buffer.from('halo') });
+await p.waitForSelector('#serr:not([hidden])'); ok((await p.locator('#serr').innerText()).includes('JPG'), 'berkas bukan gambar ditolak di browser');
+await p.setViewportSize({ width: 375, height: 800 }); await p.goto(base + '/user/soil.html'); await p.waitForSelector('#f:not([hidden])');
+ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'tidak ada scroll horizontal di 375px');
+if (process.env.SHOT) { await p.setViewportSize({ width: 1280, height: 900 }); await p.setInputFiles('#img', { name: 'tanah.jpg', mimeType: 'image/jpeg', buffer: readFileSync(join(dir, 'black.jpg')) }); await p.waitForSelector('#pv:not([hidden])'); await p.click('button[type=submit]'); await p.waitForSelector('#res .card'); await p.screenshot({ path: process.env.SHOT }); }
+ok(errs.length === 0, 'tanpa error JavaScript: ' + errs.join('|'));
+await browser.close(); srv.close(); await env.stop(); console.log(fails ? `GAGAL ${fails}` : 'SEMUA LULUS'); process.exit(fails ? 1 : 0);

@@ -100,7 +100,7 @@ const NAV = {
     ['Data & Model', [['examinations', 'admin/examinations.html', 'clipboard-list', 'Pemeriksaan'], ['datasets', 'admin/datasets.html', 'database', 'Dataset'], ['models', 'admin/models.html', 'brain-circuit', 'Model ML']]],
     ['Administrasi', [['users', 'admin/users.html', 'users', 'Pengguna'], ['reports', 'admin/reports.html', 'bar-chart-3', 'Laporan'], ['audit', 'admin/audit-logs.html', 'shield-check', 'Audit log'], ['settings', 'admin/settings.html', 'settings', 'Pengaturan']]],
     ['Bantuan', [['ai', 'ai-assistant/assistant.html', 'sparkles', 'Asisten AI'], ['profile', 'admin/profile.html', 'user-round', 'Profil']]]],
-  user: [['Utama', [['dashboard', 'user/dashboard.html', 'layout-dashboard', 'Dashboard'], ['prediction', 'user/prediction.html', 'sprout', 'Pemeriksaan baru'], ['history', 'user/history.html', 'history', 'Riwayat']]],
+  user: [['Utama', [['dashboard', 'user/dashboard.html', 'layout-dashboard', 'Dashboard'], ['prediction', 'user/prediction.html', 'sprout', 'Pemeriksaan baru'], ['soil', 'user/soil.html', 'image', 'Rekomendasi dari foto'], ['history', 'user/history.html', 'history', 'Riwayat']]],
     ['Bantuan', [['ai', 'ai-assistant/assistant.html', 'sparkles', 'Asisten AI'], ['profile', 'user/profile.html', 'user-round', 'Profil & password']]]],
 };
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };

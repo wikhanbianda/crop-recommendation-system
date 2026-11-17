@@ -41,6 +41,8 @@ MAX_CSV_BYTES = 2 * 1024 * 1024
 VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 
 app = Flask(__name__)
+from soil.routes import bp as soil_bp  # noqa: E402  (fitur tambahan: foto tanah)
+app.register_blueprint(soil_bp)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CSV_BYTES
 _lock = threading.Lock()
 _state: dict = {}
