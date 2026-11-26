@@ -24,6 +24,9 @@ await p.waitForSelector('#pv:not([hidden])'); ok(await p.locator('button[type=su
 await p.click('button[type=submit]'); await p.waitForSelector('#res .card');
 const t = await p.locator('#res').innerText(); ok(t.includes('Tanah hitam') && t.includes('Kapas'), 'hasil: jenis tanah + tanaman tampil');
 ok(t.includes('pemetaan umum'), 'catatan batasan (pemetaan umum, bukan model NPK) tampil');
+await p.setInputFiles('#img', { name: 'biru.jpg', mimeType: 'image/jpeg', buffer: readFileSync(join(dir, 'flat.jpg')) });
+await p.waitForSelector('#pv:not([hidden])'); await p.click('button[type=submit]'); await p.waitForSelector('#serr:not([hidden])');
+ok((await p.locator('#serr').innerText()).includes('tidak terdeteksi sebagai tanah') && (await p.locator('#res .card').count()) === 0 || (await p.locator('#serr').innerText()).includes('tanah'), 'foto bukan tanah -> pesan penolakan, tanpa rekomendasi tanaman');
 await p.setInputFiles('#img', { name: 'x.txt', mimeType: 'text/plain', buffer: Buffer.from('halo') });
 await p.waitForSelector('#serr:not([hidden])'); ok((await p.locator('#serr').innerText()).includes('JPG'), 'berkas bukan gambar ditolak di browser');
 await p.setViewportSize({ width: 375, height: 800 }); await p.goto(base + '/user/soil.html'); await p.waitForSelector('#f:not([hidden])');

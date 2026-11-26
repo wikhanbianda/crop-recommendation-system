@@ -9,7 +9,7 @@ const pct = (v) => `${(v * 100).toFixed(1).replace('.', ',')}%`;
 
 boot({ role: 'user', nav: 'soil', title: 'Rekomendasi dari foto tanah', crumbs: [['Pemeriksaan']] }, async (main) => {
   main.innerHTML = pageHead('Rekomendasi dari foto tanah', 'Unggah foto tanah, sistem mengenali jenis tanahnya lalu menampilkan tanaman yang umumnya cocok.') +
-  `<div class="alert info">${icon('info')}<div>Foto sebaiknya close-up permukaan tanah, terang merata, tanpa bayangan, tanpa tangan atau daun. Foto dikecilkan di perangkat Anda dan <b>tidak disimpan</b> di server.</div></div>
+  `<div class="alert info">${icon('info')}<div>Foto sebaiknya close-up permukaan tanah, terang merata, tanpa bayangan, tanpa tangan atau daun. Foto yang jelas bukan tanah akan ditolak. Foto dikecilkan di perangkat Anda dan <b>tidak disimpan</b> di server.</div></div>
   <div id="serr" class="alert err" hidden role="alert"></div><div id="state"></div>
   <form id="f" class="card" novalidate hidden><div class="field"><label for="img">${icon('image')} Foto tanah</label>
     <input id="img" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">JPG, PNG, atau WebP, maksimal 12 MB.</span></div>
@@ -44,7 +44,7 @@ boot({ role: 'user', nav: 'soil', title: 'Rekomendasi dari foto tanah', crumbs: 
 
   function render(r) {
     const top = r.crops[0]?.score || 1;
-    $('#res').innerHTML = `${r.low_confidence ? `<div class="alert warn" role="status">${icon('alert-triangle')}<div>Keyakinan model rendah (di bawah 50%). Coba foto yang lebih jelas dan terang.</div></div>` : ''}
+    $('#res').innerHTML = `${r.soil_check?.doubtful ? `<div class="alert warn" role="status">${icon('alert-triangle')}<div><b>Foto ini kurang mirip tanah.</b> Hasil di bawah mungkin tidak berarti. Gunakan foto close-up permukaan tanah, tanpa benda atau tanaman di dalamnya.</div></div>` : ''}${r.low_confidence ? `<div class="alert warn" role="status">${icon('alert-triangle')}<div>Keyakinan model rendah (di bawah 50%). Coba foto yang lebih jelas dan terang.</div></div>` : ''}
     <div class="grid cols-2"><div class="card"><h2>Jenis tanah terdeteksi</h2><p style="font-size:1.4rem;margin:.4rem 0"><b>${h(soilName(r.predicted_soil))}</b></p>
       ${r.soil_probabilities.map((s) => `<div class="row" style="display:flex;justify-content:space-between"><span>${h(soilName(s.soil))}</span><span>${pct(s.probability)}</span></div>`).join('')}
       <p class="muted mt">Model ${h(r.algorithm)} · ${h(r.model_version)}</p></div>

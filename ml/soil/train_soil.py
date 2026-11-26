@@ -31,7 +31,7 @@ import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
-from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
+from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold, cross_val_predict, cross_val_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
@@ -39,7 +39,8 @@ from sklearn.svm import SVC
 warnings.filterwarnings("ignore", category=FutureWarning)
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-from soil.features import NAMES, ImageError, extract, load_image  # noqa: E402
+from soil import synth  # noqa: E402
+from soil.features import GATE_NAMES, NAMES, ImageError, extract, gate_extras, gate_features, load_image  # noqa: E402
 
 EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 MIN_PER_CLASS = 20
@@ -62,7 +63,7 @@ def load_dataset(root: Path):
     unmapped = [c for c in classes if norm_class(c) not in mapping]
     if unmapped:
         sys.exit(f"Kelas tanpa pemetaan tanaman di soil_crop_map.json: {unmapped}. Tambahkan dulu pemetaannya (dan minta dosen memvalidasi).")
-    X, y, g, seen, dup, bad = [], [], [], set(), 0, 0
+    X, XG, y, g, seen, dup, bad = [], [], [], [], set(), 0, 0
     for c in classes:
         for p in sorted((root / c).rglob("*")):
             if p.suffix.lower() not in EXTS or not p.is_file():
@@ -72,15 +73,62 @@ def load_dataset(root: Path):
             if h in seen:
                 dup += 1; continue
             try:
-                X.append(extract(load_image(raw))); y.append(norm_class(c)); g.append(group_of(norm_class(c), p.stem)); seen.add(h)
+                im = load_image(raw); X.append(extract(im)); XG.append(gate_extras(im)); y.append(norm_class(c)); g.append(group_of(norm_class(c), p.stem)); seen.add(h)
             except ImageError:
                 bad += 1
-    X, y, g = np.vstack(X), np.array(y), np.array(g)
+    X, XG, y, g = np.vstack(X), np.vstack(XG), np.array(y), np.array(g)
     counts = {c: int((y == c).sum()) for c in sorted(set(y))}
     small = {c: n for c, n in counts.items() if n < MIN_PER_CLASS}
     if small:
         sys.exit(f"Kelas dengan gambar < {MIN_PER_CLASS}: {small}")
-    return X, y, g, counts, dup, bad
+    return X, np.hstack([X, XG]), y, g, counts, dup, bad
+
+
+def feats_from_dir(root: Path):
+    """Fitur gerbang untuk semua gambar di folder (rekursif); duplikat persis dibuang; yang rusak dilewati."""
+    F, seen = [], set()
+    for p in sorted(root.rglob("*")):
+        if p.suffix.lower() not in EXTS or not p.is_file():
+            continue
+        raw = p.read_bytes(); h = hashlib.sha256(raw).hexdigest()
+        if h in seen:
+            continue
+        try:
+            F.append(gate_features(load_image(raw))); seen.add(h)
+        except ImageError:
+            pass
+    return np.vstack(F) if F else np.empty((0, len(GATE_NAMES)))
+
+
+def build_gate(XGsoil, tr_i, te_i, neg_dir: Path, ext_dir: Path | None):
+    """Gerbang "bukan tanah": SVM biner (tanah vs bukan) pada fitur warna+tekstur+tata letak.
+    Negatif = foto umum dari folder --negatives + gambar sintetis (warna rata, derau, halaman teks, tampilan aplikasi).
+    Ambang ditentukan HANYA dari data latih (out-of-fold, jadi tidak melihat data uji)."""
+    NG = feats_from_dir(neg_dir)
+    SY = np.vstack([gate_features(im) for im in synth.make(300)])
+    rng = np.random.default_rng(42)
+    ng_i, sy_i = rng.permutation(len(NG)), rng.permutation(len(SY))
+    ng_tr, ng_te = ng_i[: int(.8 * len(NG))], ng_i[int(.8 * len(NG)):]
+    sy_tr, sy_te = sy_i[: int(.8 * len(SY))], sy_i[int(.8 * len(SY)):]
+    Xg = np.vstack([XGsoil[tr_i], NG[ng_tr], SY[sy_tr]]); yg = np.r_[np.zeros(len(tr_i)), np.ones(len(ng_tr) + len(sy_tr))]
+    mk = lambda: make_pipeline(StandardScaler(), SVC(C=5, gamma="scale", probability=True, random_state=42))  # noqa: E731
+    oof = cross_val_predict(mk(), Xg, yg, cv=StratifiedKFold(5, shuffle=True, random_state=42), method="predict_proba")[:, 1]
+    soil_oof = oof[yg == 0]
+    gate = mk().fit(Xg, yg)
+    score = lambda A: gate.predict_proba(A)[:, 1]  # noqa: E731
+    st, sn, ss = score(XGsoil[te_i]), score(NG[ng_te]), score(SY[sy_te])
+    ev = {}
+    for keep in (0.90, 0.95, 0.97, 0.99):
+        t = float(np.percentile(soil_oof, keep * 100))
+        ev[f"{keep:.2f}"] = {"threshold": t, "soil_test_flagged": int((st > t).sum()), "soil_test": int(len(st)),
+                              "general_photos_test_passed": int((sn <= t).sum()), "general_photos_test": int(len(sn)),
+                              "synthetic_test_passed": int((ss <= t).sum()), "synthetic_test": int(len(ss))}
+        if ext_dir is not None:
+            se = score(feats_from_dir(ext_dir)); ev[f"{keep:.2f}"]["external_passed"] = int((se <= t).sum()); ev[f"{keep:.2f}"]["external"] = int(len(se))
+    return gate, {"algorithm": "SVM (RBF) biner", "reject_keep": 0.95, "warn_keep": 0.90,
+                  "reject_threshold": ev["0.95"]["threshold"], "warn_threshold": ev["0.90"]["threshold"],
+                  "negatives": {"general_photos": int(len(NG)), "synthetic": int(len(SY)), "split": "80% latih / 20% uji, random_state=42"},
+                  "evaluation_by_keep_rate": ev, "features": GATE_NAMES}
 
 
 def main():
@@ -89,8 +137,10 @@ def main():
     ap.add_argument("--version", required=True)
     ap.add_argument("--out", type=Path, default=HERE.parent / "soil_artifacts")
     ap.add_argument("--name", default="Soil image classifier")
+    ap.add_argument("--negatives", type=Path, help="folder foto UMUM non-tanah untuk melatih gerbang bukan-tanah (disarankan >= 500 foto beragam)")
+    ap.add_argument("--external", type=Path, help="(opsional) folder foto non-tanah tambahan HANYA untuk evaluasi gerbang")
     a = ap.parse_args()
-    X, y, g, counts, dup, bad = load_dataset(a.data)
+    X, XG, y, g, counts, dup, bad = load_dataset(a.data)
     tr_i, te_i = next(StratifiedGroupKFold(5, shuffle=True, random_state=42).split(X, y, g))   # ~80/20, grup tidak terpecah
     Xtr, Xte, ytr, yte, gtr = X[tr_i], X[te_i], y[tr_i], y[te_i], g[tr_i]
     cands = {
@@ -114,14 +164,21 @@ def main():
         "per_class": classification_report(yte, pred, output_dict=True, zero_division=0),
         "confusion_matrix": {"labels": classes, "matrix": confusion_matrix(yte, pred, labels=classes).tolist()},
     }
+    gate = None
+    if a.negatives:
+        gate, meta["gate"] = build_gate(XG, tr_i, te_i, a.negatives, a.external)
+    else:
+        print("PERINGATAN: --negatives tidak diberikan, gerbang 'bukan tanah' TIDAK dibuat (foto non-tanah akan tetap ditebak sebagai tanah).")
     d = a.out / a.version
     if d.exists():
         sys.exit(f"Versi {a.version} sudah ada di {d}.")
     d.mkdir(parents=True)
     joblib.dump(model, d / "model.joblib")
+    if gate is not None:
+        joblib.dump(gate, d / "gate.joblib")
     (d / "metadata.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False))
     (a.out / "active.json").write_text(json.dumps({"version": a.version}))
-    print(json.dumps({"algorithm": best, "cv_f1_macro": cvs, "test": meta["metrics"], "classes": classes, "artifact": str(d)}, indent=2))
+    print(json.dumps({"algorithm": best, "cv_f1_macro": cvs, "test": meta["metrics"], "classes": classes, "gate": meta.get("gate", {}).get("evaluation_by_keep_rate"), "artifact": str(d)}, indent=2))
 
 
 if __name__ == "__main__":

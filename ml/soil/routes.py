@@ -14,7 +14,7 @@ import joblib
 import numpy as np
 from flask import Blueprint, jsonify, request
 
-from soil.features import ImageError, extract, load_image
+from soil.features import ImageError, extract, gate_features, load_image
 
 ML_ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = Path(os.environ.get("SOIL_ARTIFACTS_DIR", ML_ROOT / "soil_artifacts"))
@@ -37,7 +37,9 @@ def _current() -> dict | None:
     with _lock:
         if _state.get("version") != v:
             _state.clear()
-            _state.update({"version": v, "meta": json.loads((d / "metadata.json").read_text()), "model": joblib.load(d / "model.joblib")})
+            gate_file = d / "gate.joblib"
+            _state.update({"version": v, "meta": json.loads((d / "metadata.json").read_text()), "model": joblib.load(d / "model.joblib"),
+                           "gate": joblib.load(gate_file) if gate_file.exists() else None})
         return dict(_state)
 
 
@@ -52,7 +54,7 @@ def soil_model():
         return jsonify(error="no_soil_model"), 503
     m = c["meta"]
     return jsonify(version=c["version"], algorithm=m["algorithm"], classes=m["classes"], metrics=m["metrics"],
-                   trained_at=m["trained_at"], images_used=m["dataset"]["images_used"])
+                   trained_at=m["trained_at"], images_used=m["dataset"]["images_used"], not_soil_gate=bool(c["gate"] is not None))
 
 
 @bp.post("/predict-soil")
@@ -61,9 +63,18 @@ def predict_soil():
     if not c:
         return jsonify(error="no_soil_model"), 503
     try:
-        feats = extract(load_image(request.get_data()))
+        img = load_image(request.get_data())
     except ImageError as e:
         return jsonify(error="invalid_image", message=str(e)), 422
+    # Gerbang "bukan tanah": foto yang jelas bukan tanah ditolak, yang meragukan diberi peringatan.
+    soil_check = {"enabled": c["gate"] is not None}
+    if c["gate"] is not None:
+        gm = c["meta"]["gate"]
+        score = float(c["gate"].predict_proba(gate_features(img).reshape(1, -1))[0, 1])   # peluang "BUKAN tanah"
+        if score > gm["reject_threshold"]:
+            return jsonify(error="not_soil", message="Foto ini tidak terdeteksi sebagai tanah. Gunakan foto close-up permukaan tanah, tanpa benda, orang, atau tanaman di dalamnya."), 422
+        soil_check.update(score=round(score, 3), doubtful=bool(score > gm["warn_threshold"]))
+    feats = extract(img)
     model = c["model"]
     proba = model.predict_proba(feats.reshape(1, -1))[0]
     classes = [str(x) for x in model.classes_]
@@ -76,5 +87,5 @@ def predict_soil():
             scores[crop] = scores.get(crop, 0.0) + float(proba[i]) * float(w)
     crops = [{"crop": k, "score": round(v, 4)} for k, v in sorted(scores.items(), key=lambda kv: -kv[1]) if v > 0][:5]
     return jsonify(model_version=c["version"], algorithm=c["meta"]["algorithm"], predicted_soil=soils[0]["soil"],
-                   soil_probabilities=soils, crops=crops, low_confidence=bool(soils[0]["probability"] < LOW_CONFIDENCE),
+                   soil_probabilities=soils, crops=crops, low_confidence=bool(soils[0]["probability"] < LOW_CONFIDENCE), soil_check=soil_check,
                    unmapped_soils=[s for s in classes if s not in mapping])

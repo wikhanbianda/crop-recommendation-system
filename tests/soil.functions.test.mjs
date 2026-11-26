@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const run = promisify(execFile);
 
 const dir = mkdtempSync(join(tmpdir(), 'soil-'));
 process.env.SOIL_ARTIFACTS_DIR = join(dir, 'art');
@@ -25,12 +27,17 @@ describe('foto tanah', () => {
     assert.equal(r.status, 503); assert.equal(r.data.error, 'no_soil_model');
   });
   test('setelah dilatih: status tersedia + prediksi sukses + audit tanpa gambar', async () => {
-    const p = spawnSync('python3', ['-I', join(import.meta.dirname, 'support/make_soil_fixture.py'), dir]); assert.equal(p.status, 0, String(p.stderr));
-    const s = await call('soil-prediction', { token: ani }); assert.equal(s.data.available, true); assert.equal(s.data.model.version, 't1');
+    await run('python3', ['-I', join(import.meta.dirname, 'support/make_soil_fixture.py'), dir]);   // asinkron agar server palsu tidak ikut terblokir
+    const s = await call('soil-prediction', { token: ani }); assert.equal(s.data.available, true, JSON.stringify(s.data)); assert.equal(s.data.model.version, 't1');
     const r = await post(readFileSync(join(dir, 'black.jpg')));
     assert.equal(r.status, 200); assert.equal(r.data.predicted_soil, 'black'); assert.ok(r.data.crops.length > 0);
     const a = E.fake.state.tables.audit_logs.filter((x) => x.action === 'soil.predict');
     assert.equal(a.length, 1); assert.ok(!JSON.stringify(a[0]).includes('/9j/'));   // tidak ada data gambar di log
+  });
+  test('foto bukan tanah -> 422 not_soil + tercatat di audit', async () => {
+    const r = await post(readFileSync(join(dir, 'flat.jpg')));
+    assert.equal(r.status, 422); assert.equal(r.data.error, 'not_soil'); assert.ok(!r.data.predicted_soil);
+    assert.equal(E.fake.state.tables.audit_logs.filter((x) => x.action === 'soil.rejected').length, 1);
   });
   test('bukan JPEG -> 422; kosong -> 422; terlalu besar -> 413', async () => {
     assert.equal((await post(new TextEncoder().encode('<?php echo 1;'))).status, 422);

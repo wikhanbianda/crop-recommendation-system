@@ -1,0 +1,365 @@
+{
+  "version": "s1.1.0",
+  "name": "Soil image classifier",
+  "algorithm": "SVM (RBF)",
+  "trained_at": "2026-11-26T00:30:39.840018+00:00",
+  "sklearn": "1.9.1",
+  "classes": [
+    "alluvial",
+    "arid",
+    "black",
+    "laterite",
+    "mountain",
+    "red",
+    "yellow"
+  ],
+  "features": [
+    "mean_R",
+    "mean_G",
+    "mean_B",
+    "mean_H",
+    "mean_S",
+    "mean_V",
+    "std_R",
+    "std_G",
+    "std_B",
+    "std_H",
+    "std_S",
+    "std_V",
+    "p10_S",
+    "p50_S",
+    "p90_S",
+    "p10_V",
+    "p50_V",
+    "p90_V",
+    "hueh_0",
+    "hueh_1",
+    "hueh_2",
+    "hueh_3",
+    "hueh_4",
+    "hueh_5",
+    "hueh_6",
+    "hueh_7",
+    "hueh_8",
+    "hueh_9",
+    "hueh_10",
+    "hueh_11",
+    "sath_0",
+    "sath_1",
+    "sath_2",
+    "sath_3",
+    "sath_4",
+    "sath_5",
+    "valh_0",
+    "valh_1",
+    "valh_2",
+    "valh_3",
+    "valh_4",
+    "valh_5",
+    "valh_6",
+    "valh_7",
+    "grad_mean",
+    "grad_std",
+    "lap_var",
+    "block_contrast",
+    "edge_density",
+    "dark_frac",
+    "bright_frac",
+    "rg_ratio",
+    "gb_ratio",
+    "redness",
+    "yellowness"
+  ],
+  "dataset": {
+    "images_used": 1140,
+    "per_class": {
+      "alluvial": 50,
+      "arid": 279,
+      "black": 234,
+      "laterite": 214,
+      "mountain": 191,
+      "red": 107,
+      "yellow": 65
+    },
+    "exact_duplicates_removed": 49,
+    "unreadable_skipped": 0
+  },
+  "split": {
+    "method": "StratifiedGroupKFold(5) fold pertama (~20% uji), dikelompokkan per foto asal",
+    "random_state": 42,
+    "groups": 962,
+    "train": 912,
+    "test": 228
+  },
+  "cv_f1_macro_train": {
+    "Logistic Regression": 0.7453623512214602,
+    "Random Forest": 0.7324863664125255,
+    "SVM (RBF)": 0.7470627500740671
+  },
+  "metrics": {
+    "accuracy": 0.8771929824561403,
+    "f1_macro": 0.8350928229810216
+  },
+  "per_class": {
+    "alluvial": {
+      "precision": 0.5,
+      "recall": 0.4,
+      "f1-score": 0.4444444444444444,
+      "support": 10.0
+    },
+    "arid": {
+      "precision": 0.8545454545454545,
+      "recall": 0.8545454545454545,
+      "f1-score": 0.8545454545454545,
+      "support": 55.0
+    },
+    "black": {
+      "precision": 0.9777777777777777,
+      "recall": 0.9565217391304348,
+      "f1-score": 0.967032967032967,
+      "support": 46.0
+    },
+    "laterite": {
+      "precision": 0.8666666666666667,
+      "recall": 0.9069767441860465,
+      "f1-score": 0.8863636363636364,
+      "support": 43.0
+    },
+    "mountain": {
+      "precision": 0.868421052631579,
+      "recall": 0.8461538461538461,
+      "f1-score": 0.8571428571428571,
+      "support": 39.0
+    },
+    "red": {
+      "precision": 0.875,
+      "recall": 0.9545454545454546,
+      "f1-score": 0.9130434782608695,
+      "support": 22.0
+    },
+    "yellow": {
+      "precision": 0.9230769230769231,
+      "recall": 0.9230769230769231,
+      "f1-score": 0.9230769230769231,
+      "support": 13.0
+    },
+    "accuracy": 0.8771929824561403,
+    "macro avg": {
+      "precision": 0.8379268392426288,
+      "recall": 0.83454573737688,
+      "f1-score": 0.8350928229810216,
+      "support": 228.0
+    },
+    "weighted avg": {
+      "precision": 0.8743985328819124,
+      "recall": 0.8771929824561403,
+      "f1-score": 0.8752505493066132,
+      "support": 228.0
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "alluvial",
+      "arid",
+      "black",
+      "laterite",
+      "mountain",
+      "red",
+      "yellow"
+    ],
+    "matrix": [
+      [
+        4,
+        1,
+        0,
+        4,
+        0,
+        1,
+        0
+      ],
+      [
+        3,
+        47,
+        0,
+        1,
+        3,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        44,
+        0,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        39,
+        0,
+        2,
+        0
+      ],
+      [
+        1,
+        3,
+        1,
+        1,
+        33,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        21,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        12
+      ]
+    ]
+  },
+  "gate": {
+    "algorithm": "SVM (RBF) biner",
+    "reject_keep": 0.95,
+    "warn_keep": 0.9,
+    "reject_threshold": 0.7759265182335742,
+    "warn_threshold": 0.5389325095685166,
+    "negatives": {
+      "general_photos": 1000,
+      "synthetic": 300,
+      "split": "80% latih / 20% uji, random_state=42"
+    },
+    "evaluation_by_keep_rate": {
+      "0.90": {
+        "threshold": 0.5389325095685166,
+        "soil_test_flagged": 23,
+        "soil_test": 228,
+        "general_photos_test_passed": 17,
+        "general_photos_test": 200,
+        "synthetic_test_passed": 0,
+        "synthetic_test": 60,
+        "external_passed": 38,
+        "external": 142
+      },
+      "0.95": {
+        "threshold": 0.7759265182335742,
+        "soil_test_flagged": 13,
+        "soil_test": 228,
+        "general_photos_test_passed": 37,
+        "general_photos_test": 200,
+        "synthetic_test_passed": 2,
+        "synthetic_test": 60,
+        "external_passed": 56,
+        "external": 142
+      },
+      "0.97": {
+        "threshold": 0.873132840411682,
+        "soil_test_flagged": 6,
+        "soil_test": 228,
+        "general_photos_test_passed": 47,
+        "general_photos_test": 200,
+        "synthetic_test_passed": 9,
+        "synthetic_test": 60,
+        "external_passed": 68,
+        "external": 142
+      },
+      "0.99": {
+        "threshold": 0.9663699590269789,
+        "soil_test_flagged": 0,
+        "soil_test": 228,
+        "general_photos_test_passed": 102,
+        "general_photos_test": 200,
+        "synthetic_test_passed": 48,
+        "synthetic_test": 60,
+        "external_passed": 103,
+        "external": 142
+      }
+    },
+    "features": [
+      "mean_R",
+      "mean_G",
+      "mean_B",
+      "mean_H",
+      "mean_S",
+      "mean_V",
+      "std_R",
+      "std_G",
+      "std_B",
+      "std_H",
+      "std_S",
+      "std_V",
+      "p10_S",
+      "p50_S",
+      "p90_S",
+      "p10_V",
+      "p50_V",
+      "p90_V",
+      "hueh_0",
+      "hueh_1",
+      "hueh_2",
+      "hueh_3",
+      "hueh_4",
+      "hueh_5",
+      "hueh_6",
+      "hueh_7",
+      "hueh_8",
+      "hueh_9",
+      "hueh_10",
+      "hueh_11",
+      "sath_0",
+      "sath_1",
+      "sath_2",
+      "sath_3",
+      "sath_4",
+      "sath_5",
+      "valh_0",
+      "valh_1",
+      "valh_2",
+      "valh_3",
+      "valh_4",
+      "valh_5",
+      "valh_6",
+      "valh_7",
+      "grad_mean",
+      "grad_std",
+      "lap_var",
+      "block_contrast",
+      "edge_density",
+      "dark_frac",
+      "bright_frac",
+      "rg_ratio",
+      "gb_ratio",
+      "redness",
+      "yellowness",
+      "top_color_frac",
+      "n_colors_90",
+      "color_entropy",
+      "earth_hue_frac",
+      "green_frac",
+      "blue_frac",
+      "gray_frac",
+      "very_bright_frac",
+      "orient_entropy",
+      "orient_max",
+      "block_color_std",
+      "block_lum_std",
+      "block_tex_cv",
+      "block_lum_range"
+    ]
+  }
+}

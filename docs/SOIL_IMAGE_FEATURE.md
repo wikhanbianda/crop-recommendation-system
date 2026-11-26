@@ -49,3 +49,21 @@ python ml/soil/train_soil.py --data PATH/dataset --version s1.1.0
 - `tests/soil.functions.test.mjs` (fungsi Netlify: login, bukan JPEG, kosong, terlalu besar, JPEG rusak, layanan mati -> 503, audit tanpa data gambar).
 - `tests/e2e/soil-ui.mjs` (browser: menu, pesan model belum dilatih, upload, hasil, berkas salah, 375 px, tanpa error JS).
 Ketiga uji memakai model dari data **sintetis** hanya untuk membuktikan alur. Akurasi sebenarnya hanya angka pada bagian "Hasil pelatihan nyata" di atas.
+
+## Gerbang "bukan tanah" (model s1.1.0)
+
+Masalah: pengklasifikasi jenis tanah selalu memilih salah satu kelas, sehingga foto kucing atau layar pun "terbaca" sebagai tanah.
+Solusi: sebelum menebak jenis tanah, foto dinilai oleh model biner terpisah (SVM RBF, 69 fitur: 55 fitur warna/tekstur + 14 fitur tata letak).
+
+- Data latih gerbang: foto tanah (data latih saja) vs 800 foto umum ImageNet + 240 gambar sintetis (warna rata, gradasi, derau, halaman teks, tampilan aplikasi). 20% negatif disimpan untuk uji.
+- Ambang ditentukan dari skor out-of-fold foto tanah pada data latih saja: **tolak** bila skor > 0,7759 (95% foto tanah tetap lolos), **peringatan** bila > 0,5389 (90%).
+- Tolak -> HTTP 422 `not_soil`, tidak ada rekomendasi, dicatat di audit `soil.rejected`. Peringatan -> hasil tetap tampil dengan kotak "Foto ini kurang mirip tanah".
+
+### Batas yang jujur
+- Pada uji internal: 35 foto tanah uji -> 4 ditolak (sekitar 11%), 0 peringatan. 142 foto non-tanah eksternal -> 86 ditolak, 18 peringatan, 38 lolos (sekitar 61% ditolak, 73% ditolak atau diberi peringatan).
+- Objek bertekstur mirip tanah (rumput, kerikil, bata, sebagian tangkapan layar) bisa lolos. Gerbang adalah mitigasi, bukan jaminan.
+- Belum diuji pada foto tanah Papua. Jika foto tanah asli sering ditolak, naikkan `reject_threshold` di `metadata.json` (mis. dari 0.7759 ke 0.85), lalu Reload.
+
+### Melatih ulang
+`python ml/soil/train_soil.py --data DATASET --version s1.2.0 --negatives FOLDER_FOTO_UMUM [--external FOLDER_EVAL]`
+Tanpa `--negatives` gerbang tidak dibuat (peringatan dicetak). Rollback: ubah `ml/soil_artifacts/active.json` ke `s1.0.0`.

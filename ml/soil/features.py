@@ -86,3 +86,49 @@ def extract(img: Image.Image) -> np.ndarray:
     out = np.asarray(f, dtype=np.float64)
     assert out.size == len(NAMES), (out.size, len(NAMES))
     return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Fitur tambahan untuk "gerbang bukan-tanah" (membedakan foto tanah dari foto lain).
+# Dipakai HANYA oleh gerbang; pengklasifikasi jenis tanah tetap memakai extract() di atas.
+# ---------------------------------------------------------------------------------------------
+GATE_EXTRA_NAMES = ["top_color_frac", "n_colors_90", "color_entropy", "earth_hue_frac", "green_frac", "blue_frac",
+                    "gray_frac", "very_bright_frac", "orient_entropy", "orient_max", "block_color_std",
+                    "block_lum_std", "block_tex_cv", "block_lum_range"]
+GATE_NAMES = NAMES + GATE_EXTRA_NAMES
+
+
+def gate_extras(img: Image.Image) -> np.ndarray:
+    rgb = _prep(img)
+    a = np.asarray(rgb)
+    q = (a >> 4).astype(np.int32)
+    key = (q[..., 0] << 8) | (q[..., 1] << 4) | q[..., 2]
+    p = np.bincount(key.ravel(), minlength=4096).astype(np.float64)
+    p /= p.sum()
+    ps = np.sort(p)[::-1]
+    top, n90 = float(ps[0]), int(np.searchsorted(np.cumsum(ps), 0.9)) + 1
+    ent = float(-(p[p > 0] * np.log2(p[p > 0])).sum()) / 12
+    hsv = np.asarray(rgb.convert("HSV"), dtype=np.float64)
+    H, S, V = hsv[..., 0] * 360 / 255, hsv[..., 1] / 255, hsv[..., 2] / 255
+    earth = ((H < 50) | (H > 345)) & (S > .12) & (S < .9) & (V > .08) & (V < .92)
+    green = (H > 70) & (H < 170) & (S > .2)
+    blue = (H > 190) & (H < 260) & (S > .2)
+    g = np.asarray(rgb.convert("L"), dtype=np.float64)
+    gx, gy = np.diff(g, axis=1)[:-1, :], np.diff(g, axis=0)[:, :-1]
+    mag = np.hypot(gx, gy) + 1e-9
+    hh, _ = np.histogram(np.arctan2(gy, gx) % np.pi, bins=8, range=(0, np.pi), weights=mag)
+    hh = hh / hh.sum()
+    o_ent, o_max = float(-(hh[hh > 0] * np.log2(hh[hh > 0])).sum()) / 3, float(hh.max())
+    B = a.astype(np.float64).reshape(4, 32, 4, 32, 3).mean(axis=(1, 3)).reshape(16, 3)
+    bl = g.reshape(4, 32, 4, 32).mean(axis=(1, 3)).ravel()
+    bm = mag[:124, :124].reshape(4, 31, 4, 31).mean(axis=(1, 3)).ravel()
+    out = np.array([top, n90 / 200, ent, earth.mean(), green.mean(), blue.mean(), (S < .1).mean(), (V > .95).mean(),
+                    o_ent, o_max, float(B.std(axis=0).mean()) / 64, float(bl.std()) / 64,
+                    float(bm.std() / (bm.mean() + 1e-6)), float((bl.max() - bl.min()) / 255)])
+    assert out.size == len(GATE_EXTRA_NAMES)
+    return out
+
+
+def gate_features(img: Image.Image) -> np.ndarray:
+    return np.concatenate([extract(img), gate_extras(img)])
+

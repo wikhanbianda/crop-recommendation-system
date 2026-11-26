@@ -28,6 +28,10 @@ export default route(['GET', 'POST'], async (req) => {
 
   const r = await inference('/predict-soil', { method: 'POST', body: buf, raw: true, headers: { 'content-type': 'application/octet-stream' }, timeout: 25000 });
   if (r.status === 503 && r.data?.error === 'no_soil_model') throw new HttpError(503, 'no_soil_model', 'Model gambar tanah belum dilatih. Hubungi administrator.');
+  if (r.status === 422 && r.data?.error === 'not_soil') {
+    await audit(req, auth, 'soil.rejected', 'Foto ditolak: bukan tanah', 'failure', { bytes: buf.length });
+    throw new HttpError(422, 'not_soil', r.data.message || 'Foto ini tidak terdeteksi sebagai tanah.');
+  }
   if (r.status === 422) throw new HttpError(422, 'invalid_image', r.data?.message || 'Gambar tidak dapat diproses.');
   if (!r.ok || !r.data?.predicted_soil) {
     await audit(req, auth, 'soil.predict', 'Prediksi foto tanah gagal: layanan model', 'failure', { upstream_status: r.status });
